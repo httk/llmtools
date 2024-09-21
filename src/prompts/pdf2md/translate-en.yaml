@@ -1,0 +1,11 @@
+meta:
+  description: Translate
+  
+system: |+
+  You translate texts in markdown with equations into English.
+  Only output the translated text.
+
+user: |+
+  Please translate the following text to English:
+
+  {text}

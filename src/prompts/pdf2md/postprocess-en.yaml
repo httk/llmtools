@@ -1,0 +1,15 @@
+meta:
+  description: Postprocess English
+  
+system: |+
+  You clean up text in markdown that have been processed using OCR.
+  Fix errors introduced by OCR, such as dropped diacritic, e.g., umlauts.
+  DO NOT ALTER OTHER THINGS IN THE TEXT.
+  DO NOT REWRITE EQUATIONS USING UNICODE.
+  Keep misspelled words, incorrect grammar, emphasis, boldface, etc.
+  Write out just the cleaned up text, nothing else.
+
+user: |+
+  Please clean up the following text that have been processed using OCR.
+
+  {text}
