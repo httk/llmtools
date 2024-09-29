@@ -7,8 +7,9 @@ import re, argparse, logging, os, sys, tomllib
 from llmapi import LlmPrompt
 
 from ._version import __version__
+from .convert import convert_pdf2md
 from llmapi import ExceptionWrapper, split_markdown_by_headers
-
+ 
 arguments = [
     {
         'names': ['--version'],
@@ -95,25 +96,6 @@ arguments = [
     },
 ]
 
-def convert(filename, page_range = None, backend="nougat"):
-
-    if backend == "mupdf":
-        import pymupdf
-        with pymupdf.open(fname) as doc:
-            raw = '\n'.join([page.get_text() for page in doc])
-    elif backend == "pdfminer":
-        from pdfminer.high_level import extract_text
-        raw = extract_text(filename)
-    elif backend == "nougat":
-        from .pdf_to_md_nougat import parse_pdf
-        raw, meta = parse_pdf(filename, page_range)
-
-    print("== Extracted markdown")
-    print(raw)
-    print("=====================")
-
-    return raw
-
 def main():
     for i in range(len(sys.argv)-1):
         if sys.argv[i] == '--config' or sys.argv[i] == '-c':
@@ -171,7 +153,12 @@ def main():
         except Exception as e:
             raise ExceptionWrapper("Could not parse page range.", e) from e
 
-        text = convert(filename, args.page_range, backend=args.extract_backend)
+        text = convert_pdf2md(filename, args.page_range, backend=args.extract_backend)
+
+        print("== Extracted markdown")
+        print(text)
+        print("=====================")
+        
         prompts_dir = os.path.join(os.path.dirname(__file__),"..","prompts","pdf2md")
 
         if args.postprocess:
