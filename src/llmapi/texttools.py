@@ -32,3 +32,7 @@ def split_markdown_by_headers(markdown_text, level=1):
         combined_sections.insert(0, sections[0])
 
     return combined_sections
+
+def split_markdown_by_paragraph(markdown_text):
+    return markdown_text.split("\n\n")
+    

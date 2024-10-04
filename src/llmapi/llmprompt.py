@@ -24,13 +24,14 @@ class LlmPrompt:
         self.deltas = deltas
         
     @classmethod
-    def from_template(cls, text, template):
+    def from_template(cls, text, template_filename = None, template = None, strip_nl = False):
 
-        if template not in cls._template_cache:
-            with open(template,'r') as f:
-                cls._template_cache[template] = yaml.safe_load(f)
-
-        template = cls._template_cache[template]
+        if not template:
+            if template_filename not in cls._template_cache:
+                with open(template_filename,'r') as f:
+                    cls._template_cache[template_filename] = yaml.safe_load(f)
+                    
+                template = cls._template_cache[template_filename]
         prompt_data = {}
 
         for key in ['system', 'user']:
@@ -40,31 +41,38 @@ class LlmPrompt:
             prompt_meta = copy.deepcopy(template['meta'])
         else:
             prompt_meta = {}
+
+        if not strip_nl:
+            prompt_data['prefix'] = text[:-len(text.lstrip('\n'))]
+            prompt_data['suffix'] = text[len(text.rstrip('\n')):]
+        else:
+            prompt_data['prefix'] = ""
+            prompt_data['suffix'] = ""
                 
         return LlmPrompt(prompt_data,meta=prompt_meta)
 
-    def execute(self, keys={}, backend='locallama'):
+    def execute(self, opts={}, backend='locallama'):
 
         if backend is None or backend == 'localllama':
             llm = llmmodels.LocalLlama8B()
         elif backend == 'openai':
-            if keys.openai_key is None:
+            if opts['openai_key'] is None:
                 raise Exception("Trying to use OpenAI without API key set")
-            llm=llmmodels.OpenAI(api_key=keys.openai_key)
+            llm=llmmodels.OpenAI(api_key=opts['openai_key'])
         elif backend == 'copilot':
-            if keys.copilot_key is None:
+            if opts['copilot_key'] is None:
                 raise Exception("Trying to use Copilot without key (cookie) set")
-            llm=llmmodels.Copilot(key=keys.copilot_key)
+            llm=llmmodels.Copilot(key=opts['copilot_key'])
         else:
             raise Exception("Unknown LLM backend requested")
 
-        result = llm.run(self.prompt_data['system'],self.prompt_data['user'])
+        result = llm.run(self.prompt_data['system'],self.prompt_data['user'],opts=opts)
         if result.endswith("<|loop_detected|>"):
             print("ERROR: Llm model entered a loop. Try other options, e.g., run post-processing in smaller chunks.")
         
-        self.output = result
+        self.output = self.prompt_data['prefix'] + result + self.prompt_data['suffix']
 
-        return result
+        return self.output
 
     
     @classmethod    

@@ -35,7 +35,7 @@ class LocalLlama8B():
             handler(chunk)
         stream.close()
                     
-    def run(self, system, user):
+    def run(self, system, user, opts=None):
 
         # llama.cpp now seems to warn about a double BOS token
         #prompt = "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n"
@@ -149,7 +149,7 @@ class OpenAI():
         self.temperature = 0.2
         self.top_p = 0.2
 
-    def run(self, system, user):
+    def run(self, system, user, opts=None):
         messages = [
             {'role': 'system', 'content': system},
             {'role': 'user', 'content': user}
@@ -179,6 +179,6 @@ class Copilot:
         from sydney import SydneyClient
         self.sydney = SydneyClient(style=style)
 
-    def run(self, system, user):
+    def run(self, system, user, opts=None):
         response = asyncio.run(self.sydney.compose("Act this way:\n"+system + "\n\nPlease answer:\n" + user))
         return response

@@ -4,7 +4,7 @@ Convert pdf to md
 """
 import re, argparse, logging, os, sys, tomllib
 
-from llmapi import LlmPrompt
+from llmapi import LlmPrompt, LlmPromptSet
 
 from ._version import __version__
 from .convert import convert_pdf2md
@@ -49,16 +49,23 @@ arguments = [
     },
     {
         'names': ['-p', '--postprocess'],
-        'help': 'Run a postprocessing step using a LLM. This processing has a tendency to change minor things, e.g., grammar and spelling errors, but tend to be helpful to recover diacritics missed in the OCR step.',
+        'help': 'Run a postprocessing step using a LLM. It is recommended not to do this unless necessary, because it has a tendency to "improve" on the original, e.g., by fixing grammar and spelling errors present in the original.',
         'action': 'store_true',
         'default': False
     },
     {
         'names': ['-s', '--split'],
+        'help': 'Let the LLM process the whole document (none) or split it on paragraphs or headlines.',
+        'choices' : ['none', 'paragraph','headline'],
+        'default': 'none',
+        'type': str,
+    },
+    {
+        'names': ['-L', '--split-headline-level'],
         'help': 'Split LLM input at the selected header level (0 = all text at once, 1 = level one headings, 2 = level two headings, etc).',
         'default': 2,
         'type': int,
-    },    
+    },        
     {
         'names': ['-t', '--translate'],
         'help': 'Translate the output to the selected language.',
@@ -162,30 +169,12 @@ def main():
         prompts_dir = os.path.join(os.path.dirname(__file__),"..","prompts","pdf2md")
 
         if args.postprocess:
-            if args.split == 0:
-                prompt = LlmPrompt.from_template(text, os.path.join(prompts_dir,"postprocess-"+args.lang+".yaml"))
-                text = prompt.execute(args, backend=args.translate_model)
-            else:
-                text_segments = split_markdown_by_headers(text, args.split)
-                text = ""
-                for segment in text_segments:
-                    prompt = LlmPrompt.from_template(segment, os.path.join(prompts_dir,"postprocess-"+args.lang+".yaml"))
-                    text += prompt.execute(args, backend=args.translate_model)
-                    # Make sure text ends with the same number of newlines as segment
-                    text = text.rstrip('\n') + segment[len(segment.rstrip('\n')):]
+            promptset = LlmPromptSet.from_template_dir(text, os.path.join(prompts_dir,"postprocess"), args.lang, args)
+            text = promptset.execute(args, backend=args.translate_model)
                     
         if args.translate is not None:
-            if args.split == 0:
-                p = LlmPrompt.from_template(text, os.path.join(prompts_dir,"translate-"+args.translate+".yaml"))
-                text = prompt.execute(args, backend=args.translate_model)
-            else:
-                text_segments = split_markdown_by_headers(text, args.split)
-                text = ""
-                for segment in text_segments:
-                    prompt = LlmPrompt.from_template(segment, os.path.join(prompts_dir,"translate-"+args.lang+".yaml"))
-                    text += prompt.execute(args, backend=args.translate_model)
-                    # Make sure text ends with the same number of newlines as segment
-                    text = text.rstrip('\n') + segment[len(segment.rstrip('\n')):]
+            promptset = LlmPromptSet.from_template_dir(text, os.path.join(prompts_dir,"translate"), args.translate, args)
+            text = promptset.execute(args, backend=args.translate_model)
                     
         with open(args.outfile, 'w') as f:
             f.write(str(text))
